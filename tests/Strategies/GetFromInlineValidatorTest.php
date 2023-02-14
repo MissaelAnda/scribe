@@ -10,6 +10,7 @@ use Knuckles\Scribe\Tests\BaseLaravelTest;
 use Knuckles\Scribe\Tests\Fixtures\TestController;
 use Knuckles\Scribe\Tools\DocumentationConfig;
 use DMS\PHPUnitExtensions\ArraySubset\ArraySubsetAsserts;
+use Knuckles\Scribe\Tests\Fixtures\TestSubController;
 
 class GetFromInlineValidatorTest extends BaseLaravelTest
 {
@@ -175,6 +176,61 @@ class GetFromInlineValidatorTest extends BaseLaravelTest
         $this->assertEquals([], $results);
     }
 
+    /** @test */
+    public function can_fetch_from_deep_inline_validate_with_parent_call()
+    {
+        $endpoint = $this->endpoint(function (ExtractedEndpointData $e) {
+            $e->controller = new \ReflectionClass(TestSubController::class);
+            $e->method = $e->controller->getMethod('deepInlineValidate');
+        });
+
+        $results = $this->fetchViaDeepBodyParams($endpoint);
+
+        $this->assertArraySubset(self::$expected, $results);
+        $this->assertIsArray($results['ids']['example']);
+    }
+
+    /** @test */
+    public function can_fetch_from_deep_inline_validate_with_this_call()
+    {
+        $endpoint = $this->endpoint(function (ExtractedEndpointData $e) {
+            $e->controller = new \ReflectionClass(TestSubController::class);
+            $e->method = $e->controller->getMethod('deepThisInlineValidate');
+        });
+
+        $results = $this->fetchViaDeepBodyParams($endpoint);
+
+        $this->assertArraySubset(self::$expected, $results);
+        $this->assertIsArray($results['ids']['example']);
+    }
+
+    /** @test */
+    public function can_fetch_from_deep_inline_validate_with_static_call()
+    {
+        $endpoint = $this->endpoint(function (ExtractedEndpointData $e) {
+            $e->controller = new \ReflectionClass(TestSubController::class);
+            $e->method = $e->controller->getMethod('deepStaticCallInlineValidation');
+        });
+
+        $results = $this->fetchViaDeepBodyParams($endpoint);
+
+        $this->assertArraySubset(self::$expected, $results);
+        $this->assertIsArray($results['ids']['example']);
+    }
+
+    /** @test */
+    public function deep_search_stops_at_the_max_depth()
+    {
+        $endpoint = $this->endpoint(function (ExtractedEndpointData $e) {
+            $e->controller = new \ReflectionClass(TestSubController::class);
+            $e->method = $e->controller->getMethod('tooDeepInlineValidation');
+        });
+
+        $results = $this->fetchViaDeepBodyParams($endpoint);
+
+        $this->assertEmpty($results);
+    }
+
     protected function endpoint(Closure $configure): ExtractedEndpointData
     {
         $endpoint = new class extends ExtractedEndpointData {
@@ -189,6 +245,19 @@ class GetFromInlineValidatorTest extends BaseLaravelTest
     protected function fetchViaBodyParams(ExtractedEndpointData $endpoint): ?array
     {
         $strategy = new BodyParameters\GetFromInlineValidator(new DocumentationConfig([]));
+        return $strategy($endpoint, []);
+    }
+
+    protected function fetchViaDeepBodyParams(ExtractedEndpointData $endpoint): ?array
+    {
+        $strategy = new BodyParameters\GetFromDeepInlineValidator(new DocumentationConfig([
+            'scribe' => [
+                'deep_search' => [
+                    'namespaces' => ['Knuckles'],
+                    'max_depth' => 3,
+                ],
+            ],
+        ]));
         return $strategy($endpoint, []);
     }
 

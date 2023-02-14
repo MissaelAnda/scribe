@@ -374,6 +374,22 @@ INTRO
     ],
 
     /**
+     * Configuration for the DeepSearch strategies
+     */
+    'deep_search' => [
+        /**
+         * The max function depth to search.
+         */
+        'max_depth' => 3,
+
+        /**
+         * The allowed namespaces to search, if the class' namespace under validation
+         * does not begin with any of the allowed namespaces it will be ignored.
+         */
+        'allowed_namespaces' => ['App'],
+    ],
+
+    /**
      * The strategies Scribe will use to extract information about your routes at each stage.
      * If you create or install a custom strategy, add it here.
      */
@@ -402,6 +418,8 @@ INTRO
         'bodyParameters' => [
             Strategies\BodyParameters\GetFromFormRequest::class,
             Strategies\BodyParameters\GetFromInlineValidator::class,
+            // If you have nested inline validation rules in parent methods use the Deep strategy instead of the normal one.
+            // Strategies\BodyParameters\GetFromDeepInlineValidator::class,
             Strategies\BodyParameters\GetFromBodyParamAttribute::class,
             Strategies\BodyParameters\GetFromBodyParamTag::class,
         ],
