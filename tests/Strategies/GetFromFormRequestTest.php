@@ -4,6 +4,7 @@ namespace Knuckles\Scribe\Tests\Strategies;
 
 use Illuminate\Routing\Route;
 use Knuckles\Scribe\Extracting\Strategies\BodyParameters;
+use Knuckles\Scribe\Extracting\Strategies\UrlParameters;
 use Knuckles\Scribe\Extracting\Strategies\QueryParameters;
 use Knuckles\Scribe\Tests\BaseLaravelTest;
 use Knuckles\Scribe\Tests\Fixtures\TestController;
@@ -11,6 +12,8 @@ use Knuckles\Scribe\Tests\Fixtures\TestRequest;
 use Knuckles\Scribe\Tests\Fixtures\TestRequestQueryParams;
 use Knuckles\Scribe\Tools\DocumentationConfig;
 use DMS\PHPUnitExtensions\ArraySubset\ArraySubsetAsserts;
+use Knuckles\Camel\Extraction\ExtractedEndpointData;
+use Knuckles\Camel\Extraction\Parameter;
 use Knuckles\Scribe\Tools\Globals;
 use PHPUnit\Framework\Assert;
 
@@ -259,6 +262,28 @@ class GetFromFormRequestTest extends BaseLaravelTest
         $parsed = $strategy->normaliseArrayAndObjectParameters($parametersFromFormRequest);
         $this->assertEquals('Overrided example.', $parsed['dummy']['example']);
         $this->assertEquals('New description. This is a dummy test rule.', $parsed['dummy']['description']);
+    }
+
+    /** @test */
+    public function injects_url_params()
+    {
+        $route = new Route(['POST'], "/{user}", ['uses' => [TestController::class, 'withFormRequestAndRouteParameter']]);
+        $endpointData = ExtractedEndpointData::fromRoute($route);
+
+        $urlStrategy = new UrlParameters\GetFromLaravelAPI($config = new DocumentationConfig([]));
+        foreach ($urlStrategy($endpointData) as $parameter => $data) {
+            $endpointData->urlParameters[$parameter] = Parameter::create($data);
+        }
+
+        $strategy = new BodyParameters\GetFromFormRequest($config);
+        $results = $strategy($endpointData);
+
+        $this->assertArraySubset([
+            'new_user_id' => [
+                'type' => 'integer',
+                'description' => 'required but not the same id as the url\'s user param.',
+            ],
+        ], $results);
     }
 
     protected function fetchViaBodyParams(\ReflectionMethod $method): array

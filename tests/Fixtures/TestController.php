@@ -589,6 +589,11 @@ class TestController extends Controller
         ]);
     }
 
+    public function withFormRequestAndRouteParameter(TestRequestRouteParam $request, TestUser $user)
+    {
+        return null;
+    }
+
     /**
      * Can only run on PHP 8.1
     public function withInjectedEnumAndModel(Category $category, TestUser $user)

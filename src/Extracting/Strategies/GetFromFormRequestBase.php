@@ -22,6 +22,7 @@ class GetFromFormRequestBase extends Strategy
 
     public function __invoke(ExtractedEndpointData $endpointData, array $routeRules = []): ?array
     {
+        $this->endpointData = $endpointData;
         return $this->getParametersFromFormRequest($endpointData->method, $endpointData->route);
     }
 
@@ -37,17 +38,28 @@ class GetFromFormRequestBase extends Strategy
 
         $className = $formRequestReflectionClass->getName();
 
+        // Get the params name/example value
+        $params = [];
+        foreach($this->endpointData->urlParameters as $param) {
+            $params[$param->name] = $param->example;
+        }
+
+        $request = \Illuminate\Http\Request::create($route->uri(), $route->methods()[0], $params);
+
         if (Globals::$__instantiateFormRequestUsing) {
             $formRequest = call_user_func_array(Globals::$__instantiateFormRequestUsing, [$className, $route, $method]);
         } else {
-            $formRequest = new $className;
+            /**
+             * instanciate a new form request
+             */
+            $formRequest = \Illuminate\Foundation\Http\FormRequest::createFrom($request, new $className);
         }
-        // Set the route properly so it works for users who have code that checks for the route.
-        /** @var LaravelFormRequest|DingoFormRequest $formRequest */
-        $formRequest->setRouteResolver(function () use ($formRequest, $route) {
-            // Also need to bind the request to the route in case their code tries to inspect current request
-            return $route->bind($formRequest);
-        });
+
+        $route->bind($formRequest);
+
+        app('router')->substituteBindings($route);
+        app('router')->substituteImplicitBindings($route);
+
         $formRequest->server->set('REQUEST_METHOD', $route->methods()[0]);
 
         $parametersFromFormRequest = $this->getParametersFromValidationRules(

@@ -100,6 +100,7 @@ class Extractor
 
         self::$routeBeingProcessed = null;
 
+        $endpointData->normalizeEndpointUrl();
         return $endpointData;
     }
 
